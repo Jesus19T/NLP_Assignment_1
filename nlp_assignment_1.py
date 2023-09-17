@@ -15,7 +15,8 @@ def preprocess (filePath):
 def main():
     #read files
     path = os.getcwd()
-    newFile = path+"\\A1_DATASET\\train.txt"
+    # newFile = path+"\\A1_DATASET\\train.txt"    #Uncomment for WINDOWS
+    newFile = path+"/A1_DATASET/train.txt"    #Uncommment for MAC
     
     trainingData = preprocess(newFile)
 
@@ -26,4 +27,5 @@ def main():
     
 
 if __name__ == "__main__":
-    main()print("Hello World")
+    main()
+    print("Hello World")
