@@ -15,7 +15,7 @@ def preprocess (filePath):
 def main():
     #read files
     path = os.getcwd()
-    newFile = path+"\\train.txt"
+    newFile = path+"\\A1_DATASET\\train.txt"
     
     trainingData = preprocess(newFile)
 
