@@ -18,6 +18,8 @@ def main():
     newFile = path+"\\train.txt"
     
     trainingData = preprocess(newFile)
+
+    #test 
     print(trainingData[0:30])
     
     
