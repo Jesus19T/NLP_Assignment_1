@@ -8,7 +8,7 @@ def preprocess (filePath):
     
     
     fileWords=[x.lower() for x in lines if x.isalpha()] #remove punctuation
-                            
+    #fileWords=[x.lower() for x in lines if x not in string.punctuation] #remove punctuation                        
             
     return fileWords
 
