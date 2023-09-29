@@ -43,13 +43,13 @@ def createDictionary(data):
         
     return dictionary
 
-def unigramTraining(dataCount, data): 
+def unigramTraining(dataCount, dataLength): 
     dictionary = {}
     logDict = {}
     for key in dataCount:
         num = dataCount.get(key) #get numerator
-        dictionary.update({key: num/len(data)}) #probability regular
-        logDict.update({key: -math.log((num/len(data)))}) #probability with log
+        dictionary.update({key: num/dataLength}) #probability regular
+        logDict.update({key: -math.log((num/dataLength))}) #probability with log
     
     return dictionary, logDict
 
@@ -65,19 +65,64 @@ def bigramTraining(bigramCount, unigramCount):
     
     return dictionary, logDict
 
-def unigramPerplexityModel (unigramLog, reviews): 
-    probabilities = []
-    for x in reviews: 
-        total = 1
-        line = x.split(' ')
-        for word in line: 
-            val = unigramLog.get(word) #key values 
-            #unknown values? 
-            print(val)
-            total = total+val
-        probabilities.append(total)
+def PerplexityModel (logDict, review): 
+   # probabilities = []
+   # probabilities = 0
+    total = 0
+    for word in review: 
+        if(logDict.get(word)):
+            val = logDict.get(word)#key values 
+            
+        else:
+            val = logDict.get("<UNK>") #get unknown value if can't find
+       
+        total = total + val #sum of logs
     
-    return probabilities
+    finalProb = math.exp(total/len(review)) #divide by N and raise to e
+
+   # probabilities.append(finalProb) #probability for each review
+    
+    return finalProb
+
+def createUnknownList(unigramCount): 
+
+        
+    dictionary = {}
+    dictionary.update({"<UNK>": 0})
+    for word in unigramCount: 
+        if(unigramCount.get(word) < 2): 
+            num = dictionary.get("<UNK>")
+            dictionary.update({"<UNK>": (num + 1) })   #low frequency words = UNK token and add count
+        else:
+            num = unigramCount.get(word)
+            dictionary.update({word: num}) 
+                
+    return dictionary
+
+
+def laPlaceUnigram(dictionary, dataLength): 
+    
+    newDict = {}
+    logDict = {}
+    V = len(dictionary)
+    for key in dictionary: 
+        num = dictionary.get(key) #get numerator
+        newDict.update({key: ((num+1)/(dataLength+V))}) #probability regular
+        logDict.update({key: -math.log(((num+1)/(dataLength+V)))}) #probability regular
+    return newDict, logDict   
+
+def laPlaceBigram(bigramCount, unigramCount): 
+    dictionary = {}
+    logDict = {}
+    V = len(dictionary)
+    for key in bigramCount:
+        prev = key.split(' ') #get denominator key
+        num = bigramCount.get(key)
+        den = unigramCount.get(prev[0]) #get denominator value
+        dictionary.update({key: ((num+1)/(den+V))}) #probability regular
+        logDict.update({key: -math.log((num+1)/(den+V))}) #probability with log
+    
+    return dictionary, logDict
 
 def main():
     #read files
@@ -88,33 +133,58 @@ def main():
     valFile = path+"/A1_DATASET/val.txt"     #validation set
     
     unigramSet, bigramSet, reviews = preprocess(newFile)
- 
-    #test 
-    print(unigramSet[0:30])
-    print(bigramSet[0:30])
     
+    unigramLength = len(unigramSet)
+    bigramLength = len(bigramSet)
+     
     #create dictionaries
     unigramCount = createDictionary(unigramSet)
     bigramCount = createDictionary(bigramSet)
     
     #training set
     #Section3 - calculate probabilities
-    unigramTrainProb, unigramTrainLog = unigramTraining(unigramCount, unigramSet) 
+    unigramTrainProb, unigramTrainLog = unigramTraining(unigramCount, unigramLength) 
     bigramTrainProb, bigramTrainLog = bigramTraining(bigramCount, unigramCount)
     print("Training Complete")
     
     
-    #Section 4 - Smoothing
+    #Section 4 - Unknown
+    unknownUnigramCount = createUnknownList(unigramCount)
+    unknownBigramCount = createUnknownList(bigramCount)
+    
+    unknownUnigramLength = len(unknownUnigramCount)
+    
+    unigramTrainProb2, unigramTrainLog2 = unigramTraining(unknownUnigramCount, unknownUnigramLength) 
+    bigramTrainProb2, bigramTrainLog2 = bigramTraining(unknownBigramCount, unknownUnigramCount)
+    print('Unknown Training Complete')
+    
+    #Section 4 - Smoothing  
     #Laplace
-    #Add-k
+    unigramlaPlaceVal, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, unknownUnigramLength)
+    bigramLaPlaceVal, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)
+    
+   
+    
+   # sorted_footballers_by_goals = sorted(footballers_goals.items(), key=lambda x:x[1])
+    #Interpolation
+    
     
     #Section 5 - calculate Perplexity
+    #preprocess validation set
     valUnigram, valBigram, valReviews = preprocess(valFile)
-    reviewUnigramProb = unigramPerplexityModel(unigramTrainLog, valReviews)
     
-    #create bigram model
-    print("Dictionary")
+    
+    reviewUnigramProb = PerplexityModel(unigramlaPlaceLog, valUnigram) #laplace unigram
+    #print("Perplexity using Unigram Model: %d" reviewUnigramProb )
+    
+    
+    reviewBigramProb = PerplexityModel(bigramlaPlaceLog, valBigram) #laplace unigram
+   # print("Perplexity using Bigram Model:" + reviewBigramProb )
+    
+    
+
+    print("Complete")
 
 if __name__ == "__main__":
     main()
-    print("Complete")
+
