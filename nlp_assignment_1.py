@@ -23,8 +23,8 @@ def preprocess (filePath):
         temp2 = re.sub("\s+"," ",temp)
         cleanCorpus.append(temp2) #cleaned corpus
         splitVal = temp2.split(' ') 
-        
        
+  
         for y in range (0, (len(splitVal))):  
             parseWords.append(splitVal[y]) #combine to large corpus for each word
             if(y != 0): 
@@ -32,8 +32,13 @@ def preprocess (filePath):
                     
     return parseWords, parsePhrase, cleanCorpus
 
-def createDictionary(data): 
-    dictionary = {}
+def initDictionary(dictionary, data):
+    for word in data: 
+        dictionary.update({word: 0}) 
+            
+    return dictionary
+
+def createDictionary(data, dictionary): 
     for word in data: 
         if(dictionary.get(word)): 
              num = dictionary.get(word)
@@ -99,6 +104,35 @@ def createUnknownList(unigramCount):
                 
     return dictionary
 
+def createUnknownBigramList(bigramCount, unigramCount, unknownUnigramCount): 
+    unknownWords = []
+    unigramCountList = sorted(unigramCount.items(), key=lambda x:x[1])
+    for key,count in unigramCountList:
+        if(count < 2):
+            unknownWords.append(key)
+        
+    dictionary = {}
+    dictionary.update({"<UNK> <UNK>": 0})
+    for word in bigramCount: 
+        x = word.split(' ')
+        if((x[0] in unknownWords) and (x[1] in unknownWords)): #both word is unknown
+            newKey = "<UNK> <UNK>"
+            num = dictionary.get(newKey)
+            dictionary.update({newKey: (num+1)})
+        elif(x[0] in unknownWords): 
+            newKey = "<UNK>"+ " " + x[1]                    #first word is unknown
+            num = bigramCount.get(word)
+            dictionary.update({newKey: (num) })   #<UNK> token and add count
+        elif(x[1] in unknownWords): 
+            newKey = x[0]+ " " + "<UNK>"                   #first word is unknown
+            num = bigramCount.get(word)
+            dictionary.update({newKey: (num) })   #<UNK> token and add count
+        else:
+            num = bigramCount.get(word)
+            dictionary.update({word: num}) 
+                
+    return dictionary
+
 
 def laPlaceUnigram(dictionary, dataLength): 
     
@@ -128,18 +162,34 @@ def main():
     #read files
    # unigramDict = {}
     path = os.getcwd()
+    unigramVocab = {}
+    bigramVocab = {}
     
     newFile = path+"/A1_DATASET/train.txt"    #Uncommment for MAC
     valFile = path+"/A1_DATASET/val.txt"     #validation set
     
     unigramSet, bigramSet, reviews = preprocess(newFile)
+    #preprocess validation set
+    valUnigram, valBigram, valReviews = preprocess(valFile)
     
     unigramLength = len(unigramSet)
-    bigramLength = len(bigramSet)
+    unigramVocab = initDictionary(unigramVocab, unigramSet)
+    unigramVocab = initDictionary(unigramVocab, valUnigram)
+    
+    #bigram vocab
+    bigramVocab = initDictionary(bigramVocab, bigramSet)
+    bigramVocab = initDictionary(bigramVocab, valBigram)
      
+   
+    
     #create dictionaries
-    unigramCount = createDictionary(unigramSet)
-    bigramCount = createDictionary(bigramSet)
+    unigramCount = createDictionary(unigramSet, unigramVocab)
+    bigramCount = createDictionary(bigramSet, bigramVocab)
+    
+    
+    #test
+    unigramCountList = sorted(unigramCount.items(), key=lambda x:x[1])
+    BigramCountList = sorted(bigramCount.items(), key=lambda x:x[1])
     
     #training set
     #Section3 - calculate probabilities
@@ -150,28 +200,25 @@ def main():
     
     #Section 4 - Unknown
     unknownUnigramCount = createUnknownList(unigramCount)
-    unknownBigramCount = createUnknownList(bigramCount)
+    unknownBigramCount = createUnknownBigramList(bigramCount, unigramCount, unknownUnigramCount)
     
     unknownUnigramLength = len(unknownUnigramCount)
     
     unigramTrainProb2, unigramTrainLog2 = unigramTraining(unknownUnigramCount, unknownUnigramLength) 
     bigramTrainProb2, bigramTrainLog2 = bigramTraining(unknownBigramCount, unknownUnigramCount)
-    print('Unknown Training Complete')
+    print('Unknown Words Training Complete')
     
     #Section 4 - Smoothing  
     #Laplace
     unigramlaPlaceVal, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, unknownUnigramLength)
     bigramLaPlaceVal, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)
     
-   
-    
-   # sorted_footballers_by_goals = sorted(footballers_goals.items(), key=lambda x:x[1])
+
     #Interpolation
     
     
     #Section 5 - calculate Perplexity
-    #preprocess validation set
-    valUnigram, valBigram, valReviews = preprocess(valFile)
+   
     
     
     reviewUnigramProb = PerplexityModel(unigramlaPlaceLog, valUnigram) #laplace unigram
