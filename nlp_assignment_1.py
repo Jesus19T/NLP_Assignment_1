@@ -54,7 +54,10 @@ def unigramTraining(dataCount, dataLength):
     for key in dataCount:
         num = dataCount.get(key) #get numerator
         dictionary.update({key: num/dataLength}) #probability regular
-        logDict.update({key: -math.log((num/dataLength))}) #probability with log
+        try:
+            logDict.update({key: -math.log((num/dataLength))}) #probability with log
+        except: 
+            logDict.update({key: 0}) #num = 0
     
     return dictionary, logDict
 
@@ -65,12 +68,17 @@ def bigramTraining(bigramCount, unigramCount):
         prev = key.split(' ') #get denominator key
         num = bigramCount.get(key)
         den = unigramCount.get(prev[0]) #get denominator value
-        dictionary.update({key: num/den}) #probability regular
-        logDict.update({key: -math.log((num/den))}) #probability with log
+        
+        try:
+            dictionary.update({key: num/den}) #probability regular
+            logDict.update({key: -math.log((num/den))}) #probability with log
+        except: 
+            dictionary.update({key: 0}) #probability regular
+            logDict.update({key: 0}) #num = 0
     
     return dictionary, logDict
 
-def PerplexityModel (logDict, review): 
+def PerplexityModel (logDict, review , bigramT): 
    # probabilities = []
    # probabilities = 0
     total = 0
@@ -79,7 +87,21 @@ def PerplexityModel (logDict, review):
             val = logDict.get(word)#key values 
             
         else:
-            val = logDict.get("<UNK>") #get unknown value if can't find
+            if(bigramT):
+                x = word.split(" ")
+                firstVal= x[0]+ " " + "<UNK>"
+                secondVal = "<UNK>" + " " + x[1]
+                none = "<UNK> <UNK>"
+                
+                if(logDict.get(firstVal)):
+                   val = logDict.get(firstVal)
+                elif(logDict.get(secondVal)):
+                    val = logDict.get(secondVal)
+                else:
+                    val = logDict.get(none) # <UNK> <UNK>
+                
+            else:
+                val = logDict.get("<UNK>") #get unknown value if can't find
        
         total = total + val #sum of logs
     
@@ -112,6 +134,7 @@ def createUnknownBigramList(bigramCount, unigramCount, unknownUnigramCount):
             unknownWords.append(key)
         
     dictionary = {}
+    newBigramCount = []
     dictionary.update({"<UNK> <UNK>": 0})
     for word in bigramCount: 
         x = word.split(' ')
@@ -128,11 +151,12 @@ def createUnknownBigramList(bigramCount, unigramCount, unknownUnigramCount):
             num = bigramCount.get(word)
             dictionary.update({newKey: (num) })   #<UNK> token and add count
         else:
+            newKey = word
             num = bigramCount.get(word)
             dictionary.update({word: num}) 
-                
-    return dictionary
-
+      
+        
+    return dictionary 
 
 def laPlaceUnigram(dictionary, dataLength): 
     
@@ -148,7 +172,7 @@ def laPlaceUnigram(dictionary, dataLength):
 def laPlaceBigram(bigramCount, unigramCount): 
     dictionary = {}
     logDict = {}
-    V = len(dictionary)
+    V = len(bigramCount)
     for key in bigramCount:
         prev = key.split(' ') #get denominator key
         num = bigramCount.get(key)
@@ -158,6 +182,57 @@ def laPlaceBigram(bigramCount, unigramCount):
     
     return dictionary, logDict
 
+def addKUnigram(dictionary, dataLength, review, kVal): 
+    newDict = {}
+    logDict = {}
+    kvalDict = {}
+ 
+    for k in kVal: 
+        newDict, logDict = extractUnigramDictionary(dictionary, k, dataLength)
+        num = PerplexityModel (logDict, review, False)
+        kvalDict.update({k: num})
+    
+    optK = min(kvalDict, key=kvalDict.get)
+       
+    return optK, kvalDict   
+
+def extractUnigramDictionary(dictionary, k, dataLength):
+    newDict = {}
+    logDict = {}
+    V = len(dictionary)
+    for key in dictionary: 
+        num = dictionary.get(key) #get numerator
+        newDict.update({key: (num+k)/(dataLength+(k*V))}) #probability regular
+        logDict.update({key: -math.log(((num+k)/(dataLength+(k*V))))}) #probability regular
+    return newDict, logDict 
+        
+def addKBigram(bigramDict, unigramDict, review, kVal): 
+    newDict = {}
+    logDict = {}
+    kvalDict = {}
+
+    for k in kVal: 
+        newDict, logDict = extractBigramDictionary(bigramDict, unigramDict, k)
+        num = PerplexityModel (logDict, review , True)
+        kvalDict.update({k: num})
+    
+    optK = min(kvalDict, key=kvalDict.get)
+       
+    return optK, kvalDict   
+
+def extractBigramDictionary(bigramDict, unigramDict, k):
+    newDict = {}
+    logDict = {}
+    V = len(bigramDict)
+    for key in bigramDict: 
+        prev = key.split(' ') #get denominator key
+        num = bigramDict.get(key)
+        den = unigramDict.get(prev[0]) #get denominator value
+        newDict.update({key: ((num+k)/(den+(k*V)))}) #probability regular
+        logDict.update({key: -math.log((num+k)/(den+(k*V)))}) #probability with log
+        
+    return newDict, logDict     
+    
 def main():
     #read files
    # unigramDict = {}
@@ -213,7 +288,12 @@ def main():
     unigramlaPlaceVal, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, unknownUnigramLength)
     bigramLaPlaceVal, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)
     
-
+    #Add-k
+    kVal = [0.5, 0.05, 0.01, 0.001]
+    optkUni, kValUniDict = addKUnigram(unknownUnigramCount, unknownUnigramLength, valUnigram, kVal)
+    optkBi, kValBiDict = addKBigram(unknownBigramCount, unknownUnigramCount, valBigram, kVal)
+    print("Best k for Unigram", optkUni)
+    print("Best k for Bigram", optkBi)
     #Interpolation
     
     
@@ -221,11 +301,11 @@ def main():
    
     
     
-    reviewUnigramProb = PerplexityModel(unigramlaPlaceLog, valUnigram) #laplace unigram
+    reviewUnigramProb = PerplexityModel(unigramlaPlaceLog, valUnigram, False) #laplace unigram
     #print("Perplexity using Unigram Model: %d" reviewUnigramProb )
     
     
-    reviewBigramProb = PerplexityModel(bigramlaPlaceLog, valBigram) #laplace unigram
+    reviewBigramProb = PerplexityModel(bigramlaPlaceLog, valBigram, True) #laplace unigram
    # print("Perplexity using Bigram Model:" + reviewBigramProb )
     
     
