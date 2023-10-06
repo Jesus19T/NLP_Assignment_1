@@ -3,6 +3,9 @@ import string
 import re
 import math 
 
+# THRESHOLD = 2
+THRESHOLD = 1
+
 
 def preprocess (filePath):
     fileWords = []
@@ -117,9 +120,12 @@ def createUnknownList(unigramCount):
     dictionary = {}
     dictionary.update({"<UNK>": 0})
     for word in unigramCount: 
-        if(unigramCount.get(word) < 2): 
+        # if(unigramCount.get(word) < 2): 
+        if(unigramCount.get(word) < THRESHOLD): 
+
             num = dictionary.get("<UNK>")
-            dictionary.update({"<UNK>": (num + 1) })   #low frequency words = UNK token and add count
+            curr_value = unigramCount.get(word)
+            dictionary.update({"<UNK>": (num + curr_value) })   #low frequency words = UNK token and add count
         else:
             num = unigramCount.get(word)
             dictionary.update({word: num}) 
@@ -130,7 +136,9 @@ def createUnknownBigramList(bigramCount, unigramCount, unknownUnigramCount):
     unknownWords = []
     unigramCountList = sorted(unigramCount.items(), key=lambda x:x[1])
     for key,count in unigramCountList:
-        if(count < 2):
+        # if(count < 2):
+        if(count < THRESHOLD):
+
             unknownWords.append(key)
         
     dictionary = {}
@@ -145,11 +153,22 @@ def createUnknownBigramList(bigramCount, unigramCount, unknownUnigramCount):
         elif(x[0] in unknownWords): 
             newKey = "<UNK>"+ " " + x[1]                    #first word is unknown
             num = bigramCount.get(word)
-            dictionary.update({newKey: (num) })   #<UNK> token and add count
+            # dictionary.update({newKey: (num) })   #<UNK> token and add count
+            if(dictionary.get(newKey)): 
+                newKey_value = dictionary.get(newKey)
+                dictionary.update({newKey: (newKey_value + num)}) 
+            else:
+                dictionary.update({newKey: num})
+
         elif(x[1] in unknownWords): 
             newKey = x[0]+ " " + "<UNK>"                   #first word is unknown
             num = bigramCount.get(word)
-            dictionary.update({newKey: (num) })   #<UNK> token and add count
+            # dictionary.update({newKey: (num) })   #<UNK> token and add count
+            if(dictionary.get(newKey)): 
+                newKey_value = dictionary.get(newKey)
+                dictionary.update({newKey: (newKey_value + num)}) 
+            else:
+                dictionary.update({newKey: num})
         else:
             newKey = word
             num = bigramCount.get(word)
@@ -166,13 +185,14 @@ def laPlaceUnigram(dictionary, dataLength):
     for key in dictionary: 
         num = dictionary.get(key) #get numerator
         newDict.update({key: ((num+1)/(dataLength+V))}) #probability regular
-        logDict.update({key: -math.log(((num+1)/(dataLength+V)))}) #probability regular
+        logDict.update({key: -math.log(((num+1)/(dataLength+V)))}) #log-probability
     return newDict, logDict   
 
 def laPlaceBigram(bigramCount, unigramCount): 
     dictionary = {}
     logDict = {}
-    V = len(bigramCount)
+    # V = len(bigramCount)
+    V = len(unigramCount)                              #It should be Plus the number of total word types (distict words)
     for key in bigramCount:
         prev = key.split(' ') #get denominator key
         num = bigramCount.get(key)
@@ -243,31 +263,34 @@ def main():
     newFile = path+"/A1_DATASET/train.txt"    #Uncommment for MAC
     valFile = path+"/A1_DATASET/val.txt"     #validation set
     
+    #Preprocess Training and Validation samples to extract individual words and two word phrases
     unigramSet, bigramSet, reviews = preprocess(newFile)
-    #preprocess validation set
     valUnigram, valBigram, valReviews = preprocess(valFile)
     
     unigramLength = len(unigramSet)
+    #Create individual word Vocab using all unique words from both training and validation sets 
     unigramVocab = initDictionary(unigramVocab, unigramSet)
     unigramVocab = initDictionary(unigramVocab, valUnigram)
     
-    #bigram vocab
+    #Create 2-word-phrase Vocab (dictionaries) using all unique 2-word-phrases from both training 
+    # and validation sets and initialize their counts to 0
     bigramVocab = initDictionary(bigramVocab, bigramSet)
     bigramVocab = initDictionary(bigramVocab, valBigram)
      
    
     
-    #create dictionaries
+    #Update dictionary counts for words and phrases that appear in the training set
     unigramCount = createDictionary(unigramSet, unigramVocab)
     bigramCount = createDictionary(bigramSet, bigramVocab)
     
     
     #test
+    #Sort dictionaries based on counts in ascending order
     unigramCountList = sorted(unigramCount.items(), key=lambda x:x[1])
     BigramCountList = sorted(bigramCount.items(), key=lambda x:x[1])
     
     #training set
-    #Section3 - calculate probabilities
+    #Section3 - calculate probabilities ** WITHOUT ** Smoothening or Unknown word handling 
     unigramTrainProb, unigramTrainLog = unigramTraining(unigramCount, unigramLength) 
     bigramTrainProb, bigramTrainLog = bigramTraining(bigramCount, unigramCount)
     print("Training Complete")
@@ -285,11 +308,27 @@ def main():
     
     #Section 4 - Smoothing  
     #Laplace
-    unigramlaPlaceVal, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, unknownUnigramLength)
-    bigramLaPlaceVal, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)
-    
+    sortedUnkUniCount  = sorted(unknownUnigramCount.items(), key=lambda x:x[1])
+    sortedUnkBiCount  = sorted(unknownBigramCount.items(), key=lambda x:x[1])
+    # unigramlaPlaceVal, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, unknownUnigramLength) 
+    # bigramLaPlaceVal, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)
+    unigramlaPlace, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, unknownUnigramLength)   #Changed the name of first return value bc 
+    bigramlaPlace, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)        #having val at the end makes it seem like it
+                                                                                                    #we are referring to the validation set
     #Add-k
     kVal = [0.5, 0.05, 0.01, 0.001]
+    # print("unknownUniCount")
+    # print(unknownBigramCount)
+    # print()
+    # print()
+    # print()
+    # print("unknownBigramCount")
+    # print(unknownBigramCount)
+    # print()
+    # print()
+    # print("valUnigram")
+    # print(valUnigram)
+
     optkUni, kValUniDict = addKUnigram(unknownUnigramCount, unknownUnigramLength, valUnigram, kVal)
     optkBi, kValBiDict = addKBigram(unknownBigramCount, unknownUnigramCount, valBigram, kVal)
     print("Best k for Unigram", optkUni)
