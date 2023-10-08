@@ -286,9 +286,9 @@ def main():
     
     #test
     #Sort dictionaries based on counts in ascending order
-    unigramCountList = sorted(unigramCount.items(), key=lambda x:x[1])
-    BigramCountList = sorted(bigramCount.items(), key=lambda x:x[1])
-    
+    sortedUnigramCountList = sorted(unigramCount.items(), key=lambda x:x[1])
+    sortedBigramCountList = sorted(bigramCount.items(), key=lambda x:x[1])
+
     #training set
     #Section3 - calculate probabilities ** WITHOUT ** Smoothening or Unknown word handling 
     unigramTrainProb, unigramTrainLog = unigramTraining(unigramCount, unigramLength) 
@@ -300,9 +300,12 @@ def main():
     unknownUnigramCount = createUnknownList(unigramCount)
     unknownBigramCount = createUnknownBigramList(bigramCount, unigramCount, unknownUnigramCount)
     
-    unknownUnigramLength = len(unknownUnigramCount)
     
-    unigramTrainProb2, unigramTrainLog2 = unigramTraining(unknownUnigramCount, unknownUnigramLength) 
+
+    unknownUnigramLength = len(unknownUnigramCount)
+    sumUnkownUnigramCount = sum(unknownUnigramCount.values())
+
+    unigramTrainProb2, unigramTrainLog2 = unigramTraining(unknownUnigramCount, sumUnkownUnigramCount) # ***** UPDATED 2nd argument to unkUniCountSum *********
     bigramTrainProb2, bigramTrainLog2 = bigramTraining(unknownBigramCount, unknownUnigramCount)
     print('Unknown Words Training Complete')
     
@@ -312,9 +315,11 @@ def main():
     sortedUnkBiCount  = sorted(unknownBigramCount.items(), key=lambda x:x[1])
     # unigramlaPlaceVal, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, unknownUnigramLength) 
     # bigramLaPlaceVal, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)
-    unigramlaPlace, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, unknownUnigramLength)   #Changed the name of first return value bc 
-    bigramlaPlace, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)        #having val at the end makes it seem like it
-                                                                                                    #we are referring to the validation set
+    unigramlaPlace, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, sumUnkownUnigramCount)   # ***** UPDATED 2nd argument to unkUniCountSum *********
+    bigramlaPlace, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)  # took out val from name of 1st return variable
+                                                                                                    
+    sortedlaPlaceUnigramLog  = sorted(unigramlaPlaceLog.items(), key=lambda x:x[1], reverse=True)
+                                                                             
     #Add-k
     kVal = [0.5, 0.05, 0.01, 0.001]
     # print("unknownUniCount")
@@ -329,7 +334,9 @@ def main():
     # print("valUnigram")
     # print(valUnigram)
 
-    optkUni, kValUniDict = addKUnigram(unknownUnigramCount, unknownUnigramLength, valUnigram, kVal)
+    # optkUni, kValUniDict = addKUnigram(unknownUnigramCount, unknownUnigramLength, valUnigram, kVal)
+    optkUni, kValUniDict = addKUnigram(unknownUnigramCount, sumUnkownUnigramCount, valUnigram, kVal)
+
     optkBi, kValBiDict = addKBigram(unknownBigramCount, unknownUnigramCount, valBigram, kVal)
     print("Best k for Unigram", optkUni)
     print("Best k for Bigram", optkBi)
