@@ -7,20 +7,22 @@ import math
 THRESHOLD = 1
 
 
-def preprocess (filePath):
+def preprocess (filePath, addStart, reviews):
     fileWords = []
     parseWords = []
     parsePhrase = []
     cleanCorpus = []
 
-    with open(filePath, 'r', errors = 'ignore') as f:
-       lines = f.readlines() #parse words
-       
-    for x in lines:    
-        y = x.split('\n')       #remove return
-        lineLower = y[0].lower()        #lowercase
-        fileWords.append(("<start>") +" " + lineLower + " " + ("<stop>")) #add start and stop tokens
-       
+    if (addStart):  
+        with open(filePath, 'r', errors = 'ignore') as f:
+            lines = f.readlines() #parse words 
+        for x in lines:    
+            y = x.split('\n')       #remove return
+            lineLower = y[0].lower()        #lowercase
+            fileWords.append(("<start>") +" " + lineLower + " " + ("<stop>")) #add start and stop tokens
+    else:
+        fileWords = reviews
+
     for x in fileWords:   
         temp = re.sub("[%$&@=`()!\[\]#.,/\"'-:;|?*“”’‘_]","",x)
         temp2 = re.sub("\s+"," ",temp)
@@ -86,9 +88,10 @@ def PerplexityModel (logDict, review , bigramT):
    # probabilities = 0
     total = 0
     for word in review: 
+        
         if(logDict.get(word)):
             val = logDict.get(word)#key values 
-            
+
         else:
             if(bigramT):
                 x = word.split(" ")
@@ -202,26 +205,26 @@ def laPlaceBigram(bigramCount, unigramCount):
     
     return dictionary, logDict
 
-def addKUnigram(dictionary, dataLength, review, kVal): 
+def addKUnigram(dictionaryCounts, dataLength, review, kVal): 
     newDict = {}
     logDict = {}
     kvalDict = {}
  
     for k in kVal: 
-        newDict, logDict = extractUnigramDictionary(dictionary, k, dataLength)
+        newDict, logDict = extractUnigramDictionary(dictionaryCounts, k, dataLength)
         num = PerplexityModel (logDict, review, False)
         kvalDict.update({k: num})
     
     optK = min(kvalDict, key=kvalDict.get)
-       
-    return optK, kvalDict   
+    newDict, logDict = extractUnigramDictionary(dictionaryCounts, optK, dataLength)
+    return optK, kvalDict, newDict, logDict   
 
-def extractUnigramDictionary(dictionary, k, dataLength):
+def extractUnigramDictionary(dictionaryCounts, k, dataLength):
     newDict = {}
     logDict = {}
-    V = len(dictionary)
-    for key in dictionary: 
-        num = dictionary.get(key) #get numerator
+    V = len(dictionaryCounts)
+    for key in dictionaryCounts: 
+        num = dictionaryCounts.get(key) #get numerator
         newDict.update({key: (num+k)/(dataLength+(k*V))}) #probability regular
         logDict.update({key: -math.log(((num+k)/(dataLength+(k*V))))}) #probability regular
     return newDict, logDict 
@@ -237,13 +240,13 @@ def addKBigram(bigramDict, unigramDict, review, kVal):
         kvalDict.update({k: num})
     
     optK = min(kvalDict, key=kvalDict.get)
-       
-    return optK, kvalDict   
+    newDict, logDict = extractBigramDictionary(bigramDict, unigramDict, optK)   
+    return optK, kvalDict, newDict, logDict   
 
 def extractBigramDictionary(bigramDict, unigramDict, k):
     newDict = {}
     logDict = {}
-    V = len(bigramDict)
+    V = len(unigramDict)
     for key in bigramDict: 
         prev = key.split(' ') #get denominator key
         num = bigramDict.get(key)
@@ -264,8 +267,15 @@ def main():
     valFile = path+"/A1_DATASET/val.txt"     #validation set
     
     #Preprocess Training and Validation samples to extract individual words and two word phrases
-    unigramSet, bigramSet, reviews = preprocess(newFile)
-    valUnigram, valBigram, valReviews = preprocess(valFile)
+    unigramSet, bigramSet, reviews = preprocess(newFile, True, None)
+    valUnigram, valBigram, valReviews = preprocess(valFile, True, None)
+
+    trainSetReviews = reviews[:442]  # Slices from the beginning to the 5th element (excluding the 5th element)
+    devSetReviews = reviews[442:]  # Slices from the 5th element to the end of the list
+
+    unigramSet, bigramSet, trainReviews = preprocess(None, False, trainSetReviews) 
+    unigramSetDev, bigramSetDev, devReviews = preprocess(None, False, devSetReviews) 
+
     
     unigramLength = len(unigramSet)
     #Create individual word Vocab using all unique words from both training and validation sets 
@@ -284,7 +294,6 @@ def main():
     bigramCount = createDictionary(bigramSet, bigramVocab)
     
     
-    #test
     #Sort dictionaries based on counts in ascending order
     sortedUnigramCountList = sorted(unigramCount.items(), key=lambda x:x[1])
     sortedBigramCountList = sorted(bigramCount.items(), key=lambda x:x[1])
@@ -335,9 +344,12 @@ def main():
     # print(valUnigram)
 
     # optkUni, kValUniDict = addKUnigram(unknownUnigramCount, unknownUnigramLength, valUnigram, kVal)
-    optkUni, kValUniDict = addKUnigram(unknownUnigramCount, sumUnkownUnigramCount, valUnigram, kVal)
+    # optkUni, kValUniDict = addKUnigram(unknownUnigramCount, sumUnkownUnigramCount, valUnigram, kVal)
+    optkUni, kValUniDict, addKUniProb, addKUniProbLog = addKUnigram(unknownUnigramCount, sumUnkownUnigramCount, unigramSetDev, kVal)
 
-    optkBi, kValBiDict = addKBigram(unknownBigramCount, unknownUnigramCount, valBigram, kVal)
+    # optkBi, kValBiDict = addKBigram(unknownBigramCount, unknownUnigramCount, valBigram, kVal)
+    optkBi, kValBiDict, addKBiProb, addKBiProbLog = addKBigram(unknownBigramCount, unknownUnigramCount, bigramSetDev, kVal)
+
     print("Best k for Unigram", optkUni)
     print("Best k for Bigram", optkBi)
     #Interpolation
@@ -347,13 +359,31 @@ def main():
    
     
     
-    reviewUnigramProb = PerplexityModel(unigramlaPlaceLog, valUnigram, False) #laplace unigram
+    reviewUnigram_UnSmoothPerplexity = PerplexityModel(unigramTrainLog, valUnigram, False) #laplace unigram
     #print("Perplexity using Unigram Model: %d" reviewUnigramProb )
     
-    
-    reviewBigramProb = PerplexityModel(bigramlaPlaceLog, valBigram, True) #laplace unigram
+    reviewBigram_UnSmoothPerplexity = PerplexityModel(bigramTrainLog, valBigram, True) #laplace unigram
    # print("Perplexity using Bigram Model:" + reviewBigramProb )
+
+
+    reviewUnigram_UnknownPerplexity = PerplexityModel(unigramTrainLog2, valUnigram, False) #laplace unigram
+    #print("Perplexity using Unigram Model: %d" reviewUnigramProb )
     
+    reviewBigram_UnknownPerplexity = PerplexityModel(bigramTrainLog2, valBigram, True) #laplace unigram
+   # print("Perplexity using Bigram Model:" + reviewBigramProb )
+
+
+    reviewUnigram_LaPlacePerplexity = PerplexityModel(unigramlaPlaceLog, valUnigram, False) #laplace unigram
+    #print("Perplexity using Unigram Model: %d" reviewUnigramProb )
+    
+    reviewBigram_LaPlacePerplexity = PerplexityModel(bigramlaPlaceLog, valBigram, True) #laplace unigram
+   # print("Perplexity using Bigram Model:" + reviewBigramProb )
+
+
+    reviewUnigram_AddKPerplexity = PerplexityModel(addKUniProbLog, valUnigram, False) #laplace unigram
+    #print("Add K Perplexity using Unigram Model: ", reviewUnigramProb )
+    reviewBigram_AddKPerplexity = PerplexityModel(addKBiProbLog, valBigram, True) #laplace unigram
+    print("Add K Perplexity using Bigram Model: ",  reviewBigram_AddKPerplexity)
     
 
     print("Complete")
