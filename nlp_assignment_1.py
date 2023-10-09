@@ -359,31 +359,32 @@ def main():
    
     
     
-    reviewUnigram_UnSmoothPerplexity = PerplexityModel(unigramTrainLog, valUnigram, False) #laplace unigram
+   # reviewUnigram_UnSmoothPerplexity = PerplexityModel(unigramTrainLog, valUnigram, False) #laplace unigram
     #print("Perplexity using Unigram Model: %d" reviewUnigramProb )
-    
-    reviewBigram_UnSmoothPerplexity = PerplexityModel(bigramTrainLog, valBigram, True) #laplace unigram
+   # 
+   # reviewBigram_UnSmoothPerplexity = PerplexityModel(bigramTrainLog, valBigram, True) #laplace unigram
    # print("Perplexity using Bigram Model:" + reviewBigramProb )
 
 
     reviewUnigram_UnknownPerplexity = PerplexityModel(unigramTrainLog2, valUnigram, False) #laplace unigram
-    #print("Perplexity using Unigram Model: %d" reviewUnigramProb )
+    print("Perplexity using Unknown Unigram Model:", reviewUnigram_UnknownPerplexity )
     
     reviewBigram_UnknownPerplexity = PerplexityModel(bigramTrainLog2, valBigram, True) #laplace unigram
-   # print("Perplexity using Bigram Model:" + reviewBigramProb )
+    print("Perplexity using Unknown Bigram Model:", reviewBigram_UnknownPerplexity )
 
 
     reviewUnigram_LaPlacePerplexity = PerplexityModel(unigramlaPlaceLog, valUnigram, False) #laplace unigram
-    #print("Perplexity using Unigram Model: %d" reviewUnigramProb )
+    print("Perplexity using LaPlace Unigram Model:", reviewUnigram_LaPlacePerplexity )
     
     reviewBigram_LaPlacePerplexity = PerplexityModel(bigramlaPlaceLog, valBigram, True) #laplace unigram
-   # print("Perplexity using Bigram Model:" + reviewBigramProb )
+    print("Perplexity using LaPlace Bigram Model:",reviewBigram_LaPlacePerplexity )
 
 
     reviewUnigram_AddKPerplexity = PerplexityModel(addKUniProbLog, valUnigram, False) #laplace unigram
-    #print("Add K Perplexity using Unigram Model: ", reviewUnigramProb )
+    print("Perplexity using Add-k Unigram Model: ", reviewUnigram_AddKPerplexity )
+    
     reviewBigram_AddKPerplexity = PerplexityModel(addKBiProbLog, valBigram, True) #laplace unigram
-    print("Add K Perplexity using Bigram Model: ",  reviewBigram_AddKPerplexity)
+    print("Perplexity using Add-k Bigram Model: ",  reviewBigram_AddKPerplexity)
     
 
     print("Complete")
