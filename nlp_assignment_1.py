@@ -330,7 +330,7 @@ def main():
     sortedlaPlaceUnigramLog  = sorted(unigramlaPlaceLog.items(), key=lambda x:x[1], reverse=True)
                                                                              
     #Add-k
-    kVal = [0.5, 0.05, 0.01, 0.001]
+    kVal = [4, 3, 2, 1.5, 1, 0.5, 0.05, 0.01, 0.001, 0.0001, 0.00001]
     # print("unknownUniCount")
     # print(unknownBigramCount)
     # print()
@@ -350,8 +350,14 @@ def main():
     # optkBi, kValBiDict = addKBigram(unknownBigramCount, unknownUnigramCount, valBigram, kVal)
     optkBi, kValBiDict, addKBiProb, addKBiProbLog = addKBigram(unknownBigramCount, unknownUnigramCount, bigramSetDev, kVal)
 
+    print("")
+    print("kdic uni: ", kValUniDict)
+    print("---------")
+    print("kdic bi: ", kValBiDict)
+    print("")
     print("Best k for Unigram", optkUni)
     print("Best k for Bigram", optkBi)
+    print("")
     #Interpolation
     
     
@@ -366,24 +372,24 @@ def main():
    # print("Perplexity using Bigram Model:" + reviewBigramProb )
 
 
-    reviewUnigram_UnknownPerplexity = PerplexityModel(unigramTrainLog2, valUnigram, False) #laplace unigram
+    reviewUnigram_UnknownPerplexity = PerplexityModel(unigramTrainLog2, valUnigram, False) 
     print("Perplexity using Unknown Unigram Model:", reviewUnigram_UnknownPerplexity )
     
-    reviewBigram_UnknownPerplexity = PerplexityModel(bigramTrainLog2, valBigram, True) #laplace unigram
+    reviewBigram_UnknownPerplexity = PerplexityModel(bigramTrainLog2, valBigram, True) 
     print("Perplexity using Unknown Bigram Model:", reviewBigram_UnknownPerplexity )
 
-
-    reviewUnigram_LaPlacePerplexity = PerplexityModel(unigramlaPlaceLog, valUnigram, False) #laplace unigram
+    print("")
+    reviewUnigram_LaPlacePerplexity = PerplexityModel(unigramlaPlaceLog, valUnigram, False) 
     print("Perplexity using LaPlace Unigram Model:", reviewUnigram_LaPlacePerplexity )
     
-    reviewBigram_LaPlacePerplexity = PerplexityModel(bigramlaPlaceLog, valBigram, True) #laplace unigram
+    reviewBigram_LaPlacePerplexity = PerplexityModel(bigramlaPlaceLog, valBigram, True) 
     print("Perplexity using LaPlace Bigram Model:",reviewBigram_LaPlacePerplexity )
 
 
-    reviewUnigram_AddKPerplexity = PerplexityModel(addKUniProbLog, valUnigram, False) #laplace unigram
+    reviewUnigram_AddKPerplexity = PerplexityModel(addKUniProbLog, valUnigram, False) 
     print("Perplexity using Add-k Unigram Model: ", reviewUnigram_AddKPerplexity )
     
-    reviewBigram_AddKPerplexity = PerplexityModel(addKBiProbLog, valBigram, True) #laplace unigram
+    reviewBigram_AddKPerplexity = PerplexityModel(addKBiProbLog, valBigram, True) 
     print("Perplexity using Add-k Bigram Model: ",  reviewBigram_AddKPerplexity)
     
 
