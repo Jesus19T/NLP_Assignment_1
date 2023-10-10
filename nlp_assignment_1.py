@@ -1,12 +1,11 @@
 import os
-import string
 import re
 import math 
 
-# THRESHOLD = 2
 THRESHOLD = 1
 
-
+# Reads lines, lowercases words, removes punctuation and extra spacing between words
+# Creates dictionaries of words, 2-word phrases, and review
 def preprocess (filePath, addStart, reviews):
     fileWords = []
     parseWords = []
@@ -37,12 +36,14 @@ def preprocess (filePath, addStart, reviews):
                     
     return parseWords, parsePhrase, cleanCorpus
 
+# Returns initial vocab of words
 def initDictionary(dictionary, data):
     for word in data: 
         dictionary.update({word: 0}) 
             
     return dictionary
 
+# Counts distinct vocabulary using input data and store in dictionary
 def createDictionary(data, dictionary): 
     for word in data: 
         if(dictionary.get(word)): 
@@ -53,6 +54,8 @@ def createDictionary(data, dictionary):
         
     return dictionary
 
+# Unsmoothed unigram model
+# Updates unigram probabilities using provided dataLength count
 def unigramTraining(dataCount, dataLength): 
     dictionary = {}
     logDict = {}
@@ -66,6 +69,9 @@ def unigramTraining(dataCount, dataLength):
     
     return dictionary, logDict
 
+# Unsmoothed bigram training
+# Use bigram dictionary and unigram dictionary to create bigram probabilities
+# Returns:  dictionaries using probability and log
 def bigramTraining(bigramCount, unigramCount): 
     dictionary = {}
     logDict = {}
@@ -83,6 +89,8 @@ def bigramTraining(bigramCount, unigramCount):
     
     return dictionary, logDict
 
+# Calculate perplexity using log values and test set
+# Returns:  perplexity value
 def PerplexityModel (logDict, review , bigramT): 
    # probabilities = []
    # probabilities = 0
@@ -117,6 +125,8 @@ def PerplexityModel (logDict, review , bigramT):
     
     return finalProb
 
+# Uses threshold value to determine words used as <UNK>
+# Returns:  dictionary with list of "unknown" vocab removed and replaced as <UNK> token
 def createUnknownList(unigramCount): 
 
         
@@ -135,6 +145,8 @@ def createUnknownList(unigramCount):
                 
     return dictionary
 
+# Determines list of vocab to assign as unknown values
+# Returns:  dictionary with list of unknown vocab removed and replaced as x[0] + <UNK>, <UNK> + x[1], or <UNK> <UNK>
 def createUnknownBigramList(bigramCount, unigramCount, unknownUnigramCount): 
     unknownWords = []
     unigramCountList = sorted(unigramCount.items(), key=lambda x:x[1])
@@ -180,6 +192,8 @@ def createUnknownBigramList(bigramCount, unigramCount, unknownUnigramCount):
         
     return dictionary 
 
+# Returns:  a dictionary of unigram probabilites using LaPlace Smoothing
+#           a dictionary of unigram log-probabilites using LaPlace Smoothing
 def laPlaceUnigram(dictionary, dataLength): 
     
     newDict = {}
@@ -191,6 +205,8 @@ def laPlaceUnigram(dictionary, dataLength):
         logDict.update({key: -math.log(((num+1)/(dataLength+V)))}) #log-probability
     return newDict, logDict   
 
+# Returns:  a dictionary of bigram probabilites using LaPlace Smoothing
+#           a dictionary of bigram log-probabilites using LaPlace Smoothing
 def laPlaceBigram(bigramCount, unigramCount): 
     dictionary = {}
     logDict = {}
@@ -205,6 +221,10 @@ def laPlaceBigram(bigramCount, unigramCount):
     
     return dictionary, logDict
 
+# Returns:  the k value that minimizes perplexity of the development set using Add-K Unigram model
+#           a dictionary of perplexities per k-value using the Add-K Unigram model
+#           a dictionary of unigram probabilites using the Add-K Smoothing with optimal k-value
+#           a dictionary of unigram log-probabilites using Add-K Smoothing with optimal k-value 
 def addKUnigram(dictionaryCounts, dataLength, review, kVal): 
     newDict = {}
     logDict = {}
@@ -219,6 +239,8 @@ def addKUnigram(dictionaryCounts, dataLength, review, kVal):
     newDict, logDict = extractUnigramDictionary(dictionaryCounts, optK, dataLength)
     return optK, kvalDict, newDict, logDict   
 
+# Returns:  a dictionary of unigram probabilites using Add-K Smoothing
+#           a dictionary of unigram log-probabilites using Add-K Smoothing
 def extractUnigramDictionary(dictionaryCounts, k, dataLength):
     newDict = {}
     logDict = {}
@@ -228,7 +250,11 @@ def extractUnigramDictionary(dictionaryCounts, k, dataLength):
         newDict.update({key: (num+k)/(dataLength+(k*V))}) #probability regular
         logDict.update({key: -math.log(((num+k)/(dataLength+(k*V))))}) #probability regular
     return newDict, logDict 
-        
+
+# Returns:  the k value that minimizes perplexity of the development set using Add-K Bigram model
+#           a dictionary of perplexities per k-value using the Add-K Bigram model
+#           a dictionary of bigram probabilites using the Add-K Smoothing with optimal k-value
+#           a dictionary of bigram log-probabilites using Add-K Smoothing with optimal k-value      
 def addKBigram(bigramDict, unigramDict, review, kVal): 
     newDict = {}
     logDict = {}
@@ -243,6 +269,8 @@ def addKBigram(bigramDict, unigramDict, review, kVal):
     newDict, logDict = extractBigramDictionary(bigramDict, unigramDict, optK)   
     return optK, kvalDict, newDict, logDict   
 
+# Returns:  a dictionary of bigram probabilites using Add-K Smoothing
+#           a dictionary of bigram log-probabilites using Add-K Smoothing
 def extractBigramDictionary(bigramDict, unigramDict, k):
     newDict = {}
     logDict = {}
@@ -275,9 +303,9 @@ def main():
 
     unigramSet, bigramSet, trainReviews = preprocess(None, False, trainSetReviews) 
     unigramSetDev, bigramSetDev, devReviews = preprocess(None, False, devSetReviews) 
-
-    
+ 
     unigramLength = len(unigramSet)
+    
     #Create individual word Vocab using all unique words from both training and validation sets 
     unigramVocab = initDictionary(unigramVocab, unigramSet)
     unigramVocab = initDictionary(unigramVocab, valUnigram)
@@ -287,18 +315,15 @@ def main():
     bigramVocab = initDictionary(bigramVocab, bigramSet)
     bigramVocab = initDictionary(bigramVocab, valBigram)
      
-   
-    
     #Update dictionary counts for words and phrases that appear in the training set
     unigramCount = createDictionary(unigramSet, unigramVocab)
     bigramCount = createDictionary(bigramSet, bigramVocab)
-    
     
     #Sort dictionaries based on counts in ascending order
     sortedUnigramCountList = sorted(unigramCount.items(), key=lambda x:x[1])
     sortedBigramCountList = sorted(bigramCount.items(), key=lambda x:x[1])
 
-    #training set
+    #Training set
     #Section3 - calculate probabilities ** WITHOUT ** Smoothening or Unknown word handling 
     unigramTrainProb, unigramTrainLog = unigramTraining(unigramCount, unigramLength) 
     bigramTrainProb, bigramTrainLog = bigramTraining(bigramCount, unigramCount)
@@ -309,8 +334,6 @@ def main():
     unknownUnigramCount = createUnknownList(unigramCount)
     unknownBigramCount = createUnknownBigramList(bigramCount, unigramCount, unknownUnigramCount)
     
-    
-
     unknownUnigramLength = len(unknownUnigramCount)
     sumUnkownUnigramCount = sum(unknownUnigramCount.values())
 
@@ -322,56 +345,25 @@ def main():
     #Laplace
     sortedUnkUniCount  = sorted(unknownUnigramCount.items(), key=lambda x:x[1])
     sortedUnkBiCount  = sorted(unknownBigramCount.items(), key=lambda x:x[1])
-    # unigramlaPlaceVal, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, unknownUnigramLength) 
-    # bigramLaPlaceVal, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)
+    
     unigramlaPlace, unigramlaPlaceLog = laPlaceUnigram(unknownUnigramCount, sumUnkownUnigramCount)   # ***** UPDATED 2nd argument to unkUniCountSum *********
     bigramlaPlace, bigramlaPlaceLog = laPlaceBigram(unknownBigramCount, unknownUnigramCount)  # took out val from name of 1st return variable
                                                                                                     
     sortedlaPlaceUnigramLog  = sorted(unigramlaPlaceLog.items(), key=lambda x:x[1], reverse=True)
                                                                              
     #Add-k
-    kVal = [4, 3, 2, 1.5, 1, 0.5, 0.05, 0.01, 0.001, 0.0001, 0.00001]
-    # print("unknownUniCount")
-    # print(unknownBigramCount)
-    # print()
-    # print()
-    # print()
-    # print("unknownBigramCount")
-    # print(unknownBigramCount)
-    # print()
-    # print()
-    # print("valUnigram")
-    # print(valUnigram)
-
-    # optkUni, kValUniDict = addKUnigram(unknownUnigramCount, unknownUnigramLength, valUnigram, kVal)
-    # optkUni, kValUniDict = addKUnigram(unknownUnigramCount, sumUnkownUnigramCount, valUnigram, kVal)
+    kVal = [1, 0.5, 0.05, 0.01, 0.001, 0.0001, 0.00001]
+    
     optkUni, kValUniDict, addKUniProb, addKUniProbLog = addKUnigram(unknownUnigramCount, sumUnkownUnigramCount, unigramSetDev, kVal)
-
-    # optkBi, kValBiDict = addKBigram(unknownBigramCount, unknownUnigramCount, valBigram, kVal)
     optkBi, kValBiDict, addKBiProb, addKBiProbLog = addKBigram(unknownBigramCount, unknownUnigramCount, bigramSetDev, kVal)
 
-    print("")
-    print("kdic uni: ", kValUniDict)
-    print("---------")
-    print("kdic bi: ", kValBiDict)
     print("")
     print("Best k for Unigram", optkUni)
     print("Best k for Bigram", optkBi)
     print("")
-    #Interpolation
     
     
     #Section 5 - calculate Perplexity
-   
-    
-    
-   # reviewUnigram_UnSmoothPerplexity = PerplexityModel(unigramTrainLog, valUnigram, False) #laplace unigram
-    #print("Perplexity using Unigram Model: %d" reviewUnigramProb )
-   # 
-   # reviewBigram_UnSmoothPerplexity = PerplexityModel(bigramTrainLog, valBigram, True) #laplace unigram
-   # print("Perplexity using Bigram Model:" + reviewBigramProb )
-
-
     reviewUnigram_UnknownPerplexity = PerplexityModel(unigramTrainLog2, valUnigram, False) 
     print("Perplexity using Unknown Unigram Model:", reviewUnigram_UnknownPerplexity )
     
@@ -392,6 +384,12 @@ def main():
     reviewBigram_AddKPerplexity = PerplexityModel(addKBiProbLog, valBigram, True) 
     print("Perplexity using Add-k Bigram Model: ",  reviewBigram_AddKPerplexity)
     
+
+    zeroCount = 0
+    for item in unknownBigramCount:
+        if (unknownBigramCount.get(item)==0):
+            zeroCount += 1
+    print("sorted unknown bigram count of items with value 0: ", zeroCount)
 
     print("Complete")
 
